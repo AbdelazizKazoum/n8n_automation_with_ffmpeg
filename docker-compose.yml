@@ -15,10 +15,17 @@ services:
       - N8N_PROTOCOL=http
       - NODE_ENV=production
       - N8N_RESTRICT_FILE_ACCESS_TO=/data;/temp
-      - N8N_ENABLE_EXECUTE_COMMAND=true
-      - N8N_ENABLE_COMMAND_EXECUTION=true
-
     volumes:
       - ./n8n_data:/root/.n8n
+      - ./assets:/data
+      - ./temp:/temp
+
+  ffmpeg-service:
+    build: ./ffmpeg-service
+    container_name: ffmpeg-service
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
       - ./assets:/data
       - ./temp:/temp
