@@ -29,3 +29,15 @@ services:
     volumes:
       - ./assets:/data
       - ./temp:/temp
+
+  whisper-service:
+    build: ./whisper-service
+    container_name: whisper-service
+    restart: always
+    ports:
+      - "5000:5000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]

@@ -1,5 +1,7 @@
 const express = require("express");
 const {exec} = require("child_process");
+const {spawn} = require("child_process");
+
 const fs = require("fs");
 const path = require("path");
 const ffmpegPath = require("ffmpeg-static");
@@ -16,27 +18,52 @@ app.get("/test", (req, res) => {
 });
 
 // example: merge audios + image
-app.post("/create-video", async (req, res) => {
+app.post("/create-video", (req, res) => {
+  console.log("Received request:", req.body);
+
   const {image, audios} = req.body;
+  const output = "/data/output.mp4";
 
-  // Example file paths (you can adapt later)
-  const output = "output.mp4";
+  const args = [
+    "-y",
+    "-loop",
+    "1",
+    "-i",
+    image,
+    ...audios.flatMap((a) => ["-i", a]),
+    "-filter_complex",
+    `concat=n=${audios.length}:v=0:a=1[outa]`,
+    "-map",
+    "0:v",
+    "-map",
+    "[outa]",
+    "-c:v",
+    "libx264",
+    "-tune",
+    "stillimage",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-shortest",
+    output,
+  ];
 
-  const command = `
-    "${ffmpegPath}" -loop 1 -i ${image} \
-    ${audios.map((a) => `-i ${a}`).join(" ")} \
-    -filter_complex "concat=n=${audios.length}:v=0:a=1[outa]" \
-    -map 0:v -map "[outa]" \
-    -c:v libx264 -tune stillimage -c:a aac -b:a 192k \
-    -shortest ${output}
-  `;
+  const ffmpeg = spawn(ffmpegPath, args);
 
-  exec(command, (err, stdout, stderr) => {
-    if (err) {
-      return res.status(500).json({error: stderr});
+  ffmpeg.stderr.on("data", (data) => {
+    console.log("FFmpeg:", data.toString());
+  });
+
+  ffmpeg.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({error: "FFmpeg failed"});
     }
 
-    res.json({message: "Video created", file: output});
+    res.json({
+      message: "Video created",
+      file: output,
+    });
   });
 });
 
